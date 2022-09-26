@@ -1,0 +1,10 @@
+title: The Dalriada Project
+description: Simple RPG Engine Test.
+author: bwzd#9283
+splash:
+  file: assets/no-image.png
+icon:
+  file: assets/no-icon.png
+version: v0.0.1
+category: game, demo # game, demo, utility, ...
+url: https://github.com/sedwca/dalriada
