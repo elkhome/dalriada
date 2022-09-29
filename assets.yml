@@ -3,6 +3,6 @@
 # References can be picked up by including assets.hpp
 
 assets.cpp:
-  assets/tileset00.png:
+  assets/tileset001.png:
     name: asset_route01
     transparent: 255,0,255
