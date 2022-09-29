@@ -25,7 +25,7 @@ const Rect player_back_walk_top = Rect(4,0,2,1);
 int map_width = 40;
 int map_height = 84;
 
-const int scr_width = 15; //20 for 32blit, 15 for picosystem
+const int scr_width = 20; //20 for 32blit, 15 for picosystem
 const int scr_height = 15;
 const int scr_area = (scr_width+1)*(scr_height+1);
 
