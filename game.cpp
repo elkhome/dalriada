@@ -76,10 +76,12 @@ struct Player {
 	Point dir;
 	Point pos;
 	Direction facing;
+	Direction last_facing;
 	Rect sprite;
 	Rect sprite_top;
-	bool flip;
-	Rect animation[2];
+	uint8_t flip;
+	bool alternate;
+	Rect animation[6];
 	
 	Player() {
 		dir = Point(0, 1);
@@ -87,38 +89,59 @@ struct Player {
 		facing = DOWN;
 		animation[0] = {player_front_stand};
 		animation[1] = {player_front_walk};
+
+		animation[2] = {player_back_stand};
+		animation[3] = {player_back_walk};
+
+		animation[4] = {player_side_stand};
+		animation[5] = {player_side_walk};
 		sprite = Rect(2, 0, 2, 2);
 		sprite_top = Rect(2, 0, 2, 1);
 		flip = 0;
+		alternate = false;
 	}
 
 	void placeplayer() {
 		switch(facing) {
+		
 		case LEFT:
 			dir = Point(-1,0);
 			flip = 0;
-			sprite = player_side_walk;
+			//sprite = player_side_walk;
+			sprite = (alternate) ? animation[5] : animation[4];
+			if (facing != last_facing) sprite = animation[4]; //Override if this is the first time turning in this direction.
 			sprite_top = player_side_walk_top;
+			alternate = !alternate;
+			last_facing = facing;
 			break;
 		case RIGHT:
 			dir = Point(1,0);
 			flip = 1;
-			sprite = player_side_walk;
+			//sprite = player_side_walk;
+			sprite = (alternate) ? animation[5] : animation[4];
+			if (facing != last_facing) sprite = animation[4]; //Override if this is the first time turning in this direction.
 			sprite_top = player_side_walk_top;
+			alternate = !alternate;
+			last_facing = facing;
 			break;
 		case DOWN:
 			dir = Point(0,1);
-			flip = 0;
-			animation[0] = {player_front_stand};
-			animation[1] = {player_front_walk};
-			sprite = animation[0];
+			//flip = 0;
+			flip = alternate ? 0 : 1;
+			alternate = !alternate;
+			sprite = (facing == last_facing) ? animation[1] : animation[0];
 			sprite_top = player_front_stand_top;
+			last_facing = facing;
 			break;
 		case UP:
 			dir = Point(0,-1);
-			flip = 0;
-			sprite = player_back_stand;
+			//flip = 0;
+			flip = alternate ? 0 : 1;
+			alternate = !alternate;
+			//sprite = player_back_stand;
+			sprite = (facing == last_facing) ? animation[3] : animation[2];
 			sprite_top = player_back_stand_top;
+			last_facing = facing;
 			break;
 		}
 	}
