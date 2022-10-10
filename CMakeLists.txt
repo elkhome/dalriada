@@ -5,7 +5,7 @@ cmake_minimum_required(VERSION 3.9)
 project(Dalriada)
 
 # Add your sources here (adding headers is optional, but helps some CMake generators)
-set(PROJECT_SOURCE game.cpp game.hpp)
+set(PROJECT_SOURCE game.cpp game.hpp world.cpp)
 
 # ... and any other files you want in the release here
 set(PROJECT_DISTRIBS LICENSE README.md)
