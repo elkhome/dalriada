@@ -9,25 +9,25 @@
 using namespace blit;
 const int tilesize = 8;
 
-const Rect player_front_stand = Rect(28,8,2,2);
-const Rect player_front_walk = Rect(28,8,2,2);
-const Rect player_side_stand = Rect(28,8,2,2);
-const Rect player_side_walk = Rect(28,8,2,2);
-const Rect player_back_stand = Rect(28,8,2,2);
-const Rect player_back_walk = Rect(28,8,2,2);
+const Rect player_front_stand = Rect(0,32,2,2);
+const Rect player_front_walk = Rect(2,32,2,2);
+const Rect player_side_stand = Rect(8,32,2,2);
+const Rect player_side_walk = Rect(10,32,2,2);
+const Rect player_back_stand = Rect(4,32,2,2);
+const Rect player_back_walk = Rect(6,32,2,2);
 
-const Rect player_front_stand_top = Rect(2,0,2,1);
-const Rect player_front_walk_top = Rect(0,0,2,1);
-const Rect player_side_stand_top = Rect(8,0,2,1);
-const Rect player_side_walk_top = Rect(10,0,2,1);
-const Rect player_back_stand_top = Rect(6,0,2,1);
-const Rect player_back_walk_top = Rect(4,0,2,1);
+//#define M_WIDTH 80
+//#define M_HEIGHT 120
 
-#define M_WIDTH 80
-#define M_HEIGHT 120
+const int32_t map_width = M_WIDTH; //40;
+const int32_t map_height = M_HEIGHT; //84;
 
-int map_width = M_WIDTH; //40;
-int map_height = M_HEIGHT; //84;
+enum Platform {
+	BLIT,
+	PICO,
+};
+
+Platform platform = BLIT;
 
 const int scr_width = 20; //20 for 32blit, 15 for picosystem
 const int scr_height = 15;
@@ -35,6 +35,7 @@ const int scr_area = (scr_width+1)*(scr_height+1);
 
 Point tile_offset(18, 0);
 Point camera_offset(0, 0);
+Point player_offset(0,0);
 
 int animationTimer = 0;
 int currentFrame = 0;
@@ -58,24 +59,22 @@ enum State {
 
 State state = WALKING;
 
-const uint8_t collidemap[1008] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,8,8,8,8,15,16,16,16,16,16,16,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,2,16,0,0,0,0,16,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,2,16,0,0,0,0,16,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,2,16,0,0,0,0,16,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,0,0,0,0,2,16,0,0,0,0,16,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,4,4,4,4,15,16,16,16,16,16,16,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,0,0,1,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,0,0,1,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,0,0,1,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,0,0,1,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,0,0,1,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,0,0,1,15,15,};
+enum Camera {
+	FREE,
+	FIXED,
+};
+
+Camera camera = FREE;
+
+const uint8_t collidemap[1024] = {
+0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,0,0,0,0,0,0,15,15,0,0,0,0,15,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,15,15,15,15,0,0,0,0,0,0,15,15,0,0,0,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,0,0,0,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,0,0,0,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,0,0,0,0,15,15,15,15,15,15,15,15,15,15,15,15,0,0,0,0,15,15,15,15,15,15,15,15,15,15,15,15,0,0,0,0,0,0,15,15,15,15,15,15,15,15,15,15,0,0,0,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,0,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,16,16,0,0,0,0,15,15,15,15,15,15,15,15,15,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,16,16,0,0,0,0,0,0,15,15,15,15,15,15,15,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,16,16,16,16,0,0,0,0,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,16,16,16,16,0,0,0,0,15,15,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,0,0,0,15,15,0,0,0,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,0,0,0,15,15,0,0,0,0,0,0,0,15,15,0,0,0,0,0,0,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,15,15,0,0,0,0,0,0,0,15,15,0,0,0,0,0,0,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,15,15,0,0,0,0,0,15,15,15,15,0,0,0,0,0,0,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,15,15,0,0,0,0,0,15,15,15,15,0,0,0,0,0,0,15,15,15,15,15,15,15,15,0,0,0,0,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
 
 int trans(int x) { return ( x ) * tilesize; }
 //int transy(int y) { return ( y ) * tilesize; }
 
 int slidex(int j) { return ( j - tile_offset.x ) * tilesize + camera_offset.x; }
 int slidey(int i) { return ( i - tile_offset.y ) * tilesize + camera_offset.y; }
-
-void animate() {
-	animationTimer += 1;
-	int FRAME_LENGTH = 2;
-
-	if (animationTimer >= FRAME_LENGTH) {
-		animationTimer -= FRAME_LENGTH;
-		currentFrame++;
-		currentFrame %= framecount;
-	}
-}
 
 struct Player {
 	Point dir;
@@ -102,13 +101,6 @@ struct Player {
 		animation[4] = {player_side_stand};
 		animation[5] = {player_side_walk};
 		
-		animation_top[0] = {player_front_stand_top};
-		animation_top[1] = {player_front_walk_top};
-		animation_top[2] = {player_back_stand_top};
-		animation_top[3] = {player_back_walk_top};
-		animation_top[4] = {player_side_stand_top};
-		animation_top[5] = {player_side_walk_top};
-		
 		sprite = player_front_stand;
 		sprite_top = Rect(2, 0, 2, 1);
 		flip = 0;
@@ -120,61 +112,61 @@ struct Player {
 		
 		case LEFT:
 			dir = Point(-1,0);
-			flip = 0;
-			//sprite = player_side_walk;
-			sprite = (alternate) ? animation[5] : animation[4];
-			if (facing != last_facing) sprite = animation[4]; //Override if this is the first time turning in this direction.
-			sprite_top = (alternate) ? animation_top[5] : animation_top[4];
-			if (facing != last_facing) sprite = animation_top[4]; //Override if this is the first time 
-			//alternate = !alternate;
+			if(momentum > 0) {
+				flip = 1;
+				//sprite = player_side_walk;
+				sprite = (alternate) ? animation[5] : animation[4];
+				if (facing != last_facing) sprite = animation[4]; //Override if this is the first time turning in this direction.
+				sprite_top = (alternate) ? animation_top[5] : animation_top[4];
+				if (facing != last_facing) sprite = animation_top[4]; //Override if this is the first time 
+				//alternate = !alternate;
+			} else {
+				//alternate = 0;
+				sprite = animation[4];
+			}
 			last_facing = facing;
 			break;
 		case RIGHT:
 			dir = Point(1,0);
-			flip = 1;
-			//sprite = player_side_walk;
-			sprite = (alternate) ? animation[5] : animation[4];
-			if (facing != last_facing) sprite = animation[4]; //Override if this is the first time turning in this direction.
-			sprite_top = (alternate) ? animation_top[5] : animation_top[4];
-			if (facing != last_facing) sprite = animation_top[4]; //Override if this is the first time 
-			//alternate = !alternate;
+			if(momentum > 0) {	
+				flip = 0;
+				//sprite = player_side_walk;
+				sprite = (alternate) ? animation[5] : animation[4];
+				if (facing != last_facing) sprite = animation[4]; //Override if this is the first time turning in this direction.
+				sprite_top = (alternate) ? animation_top[5] : animation_top[4];
+				if (facing != last_facing) sprite = animation_top[4]; //Override if this is the first time 
+				//alternate = !alternate;
+			} else {
+				//alternate = 0;
+				sprite = animation[4];
+			}
 			last_facing = facing;
 			break;
 		case DOWN:
 			dir = Point(0,1);
 			//flip = 0;
-			flip = alternate_flip;
-			sprite = (alternate) ? animation[1] : animation[0];
-			sprite_top = (alternate) ? animation_top[1] : animation_top[0];
-			if (facing != last_facing) {
-				sprite = animation[0]; //Override if this is the first time turning in this direction.
-				sprite = animation_top[0];
-				//alternate_flip = 0;
-			}//Override if this is the first time 
-			//if (facing != last_facing) 
-			if (alternate) {alternate_flip = !alternate_flip;}
-			//alternate = !alternate;
-			
+			if(momentum > 0) {	
+				flip = alternate;
+				sprite = animation[1];
+				sprite_top = animation_top[1];
+			} else {
+				//alternate = 0;
+				sprite = animation[0];
+			}
 			last_facing = facing;
-			
 			break;
 		case UP:
 			dir = Point(0,-1);
 			//flip = 0;
-			flip = alternate_flip;
-			sprite = (alternate) ? animation[3] : animation[2];
-			sprite_top = (alternate) ? animation_top[3] : animation_top[2];
-			if (facing != last_facing) {
-				sprite = animation[2]; //Override if this is the first time turning in this direction.
-				sprite = animation_top[2];
-				//alternate_flip = 0;
-			}//Override if this is the first time 
-			//if (facing != last_facing) 
-			if (alternate) {alternate_flip = !alternate_flip;}
-			//alternate = !alternate;
-			
+			if(momentum > 0) {	
+				flip = alternate;
+				sprite = animation[3];
+				sprite_top = animation_top[3];
+			} else {
+				//alternate = 0;
+				sprite = animation[2];
+			}
 			last_facing = facing;
-			
 			break;
 
 	/*	case UP: //version of case from HeathenUK
@@ -188,16 +180,15 @@ struct Player {
 			last_facing = facing;
 			break; */
 
-
 		}
 	}
 
 	void drawplayer() {
-		screen.sprite(sprite, Point(pos.x*8,pos.y*8), flip);
+		screen.sprite(sprite, Point(pos.x*8 + player_offset.x,pos.y*8 + player_offset.y), flip);
 	}
 	
 	void drawplayer_top() {
-		screen.sprite(sprite_top, Point(pos.x*8,pos.y*8), flip);
+		screen.sprite(sprite_top, Point(pos.x*8 + player_offset.x,pos.y*8 + player_offset.y), flip);
 	}
 
 } player;
@@ -207,7 +198,7 @@ struct Tilemap { //Class is a work in progress. Eventually, the map/collision/et
 	const int fringe = 2;
 	
 	Tilemap() {
-		pos = Point(6, 88);
+		pos = Point(20, 26);
 	}
 
 	struct Tile {
@@ -220,8 +211,28 @@ struct Tilemap { //Class is a work in progress. Eventually, the map/collision/et
 		for (int j = -1* fringe; j < scr_height + fringe; j++) {
 			for (int i = -1* fringe; i < scr_width + fringe; i++) {
 				//screen.sprite(loadedtiles2[j][i].sprite, Point(i*8+camera_offset.x, j*8+camera_offset.y));
-				screen.sprite(world_data3[std::min((int32_t)M_HEIGHT, std::max((int32_t)0, j+pos.y))][std::min((int32_t)M_WIDTH, std::max((int32_t)0, i+pos.x))], Point(i*8+camera_offset.x, j*8+camera_offset.y));
+				screen.sprite(world_data3[std::min(map_height, std::max((int32_t)0, j+pos.y))][std::min(map_width, std::max((int32_t)0, i+pos.x))], Point(i*8+camera_offset.x, j*8+camera_offset.y));
+				//screen.sprite(world_data3[std::min((int32_t)M_HEIGHT, std::max((int32_t)0, j+pos.y))][std::min((int32_t)M_WIDTH, std::max((int32_t)0, i+pos.x))], Point(i*8+camera_offset.x, j*8+camera_offset.y));
+			//	screen.sprite(world_data3[std::min((int32_t)M_HEIGHT, std::max((int32_t)0, j+pos.y))][std::min((int32_t)M_WIDTH, std::max((int32_t)0, i+pos.x))], Point(i*8+camera_offset.x, j*8+camera_offset.y));
 				
+			}
+		}
+	}
+	
+	void drawmap4() {
+		int s = 0;
+		for (int j = -1* fringe; j < scr_height + fringe; j++) {
+			for (int i = -1* fringe; i < scr_width + fringe; i++) {
+				s = world_data3[std::min(map_height, std::max((int32_t)0, j+pos.y))][std::min(map_width, std::max((int32_t)0, i+pos.x))];
+				//screen.sprite(loadedtiles2[j][i].sprite, Point(i*8+camera_offset.x, j*8+camera_offset.y));
+				if (s == 640)
+					{screen.sprite(1036, Point(i*8+camera_offset.x, j*8+camera_offset.y));}
+				if (s == 641)
+					{screen.sprite(1037, Point(i*8+camera_offset.x, j*8+camera_offset.y));}
+				if (s == 642)
+					{screen.sprite(1038, Point(i*8+camera_offset.x, j*8+camera_offset.y));}
+				if (s == 643)
+					{screen.sprite(1039, Point(i*8+camera_offset.x, j*8+camera_offset.y));}
 			//	screen.sprite(world_data3[std::min((int32_t)M_HEIGHT, std::max((int32_t)0, j+pos.y))][std::min((int32_t)M_WIDTH, std::max((int32_t)0, i+pos.x))], Point(i*8+camera_offset.x, j*8+camera_offset.y));
 				
 			}
@@ -331,6 +342,41 @@ struct Tilemap { //Class is a work in progress. Eventually, the map/collision/et
 		}
 		return world_data3[pos.y+cy][pos.x+cx];
 	};
+	
+	void teleport() {
+		int loc_x = pos.x + player.pos.x;
+		int loc_y = pos.y + player.pos.y;
+		
+		if (loc_x == 16 && loc_y == 28) {			//to crate room
+			camera = FIXED;
+			pos.x = 141 - 9;
+			pos.y = 19 - 13;
+			player.pos.x = 9;
+			player.pos.y = 13;
+			player.facing = UP;
+		} else if (loc_x == 26 && loc_y == 32) {	//to rail room
+			camera = FIXED;
+			pos.x = 140 - player.pos.x;
+			pos.y = 47 - 13;
+			player.pos.y = 13;
+			player.facing = UP;
+		} else if (loc_x == 141 && loc_y == 19) {	//from crate room
+			camera = FREE;
+			pos.x = 16 - 6;
+			pos.y = 28 - 6;
+			player.facing = DOWN;
+		} else if (loc_x == 140 && loc_y == 47) {	//from rail room
+			camera = FREE;
+			pos.x = 26 - 6;
+			pos.y = 32 - 6;
+			player.facing = DOWN;
+		} else {
+			
+			pos.x = 14;
+			pos.y = 18;
+			player.facing = DOWN;
+		}
+	};
 
 	bool collide() {
 		
@@ -340,7 +386,9 @@ struct Tilemap { //Class is a work in progress. Eventually, the map/collision/et
 		int l = collidetiles(3);
 		int m = collidetiles(4);
 		
-		if (collidemap[i] == 15 || collidemap[k] == 15) {
+		if (l == 0 || l == 460 || l == 480) {
+			teleport();
+		} else if (collidemap[i] == 15 || collidemap[k] == 15) {
 			return true;
 		} else if (collidemap[j] == 16 && collidemap[k] == 16) {
 			return true;
@@ -348,7 +396,7 @@ struct Tilemap { //Class is a work in progress. Eventually, the map/collision/et
 			return true;
 		} else {return false;}
 		
-		//return false;
+		return false;
 	}
 
 
@@ -356,13 +404,28 @@ struct Tilemap { //Class is a work in progress. Eventually, the map/collision/et
 
 void actions(int n) {
 	switch(n) {
-		case 854: //grave
+		case 736: //noticeboard
 			state = DIALOG;
 			break;
-		case 758: //door
+		case 738: //signpost
 			state = DIALOG;
 			break;
-		case 856: //chest
+		case 839: //chest
+			state = DIALOG;
+			break;
+		case 212: //left man
+			state = DIALOG;
+			break;
+		case 184: //small man
+			state = DIALOG;
+			break;
+		case 214: //right man
+			state = DIALOG;
+			break;
+		case 460: //right man
+			state = DIALOG;
+			break;
+		case 480: //right man
 			state = DIALOG;
 			break;
 	}
@@ -373,60 +436,107 @@ std::string actionlookup(Point n) {
 	
 	//Search for dialog matching the designated coordinates.
 	switch(n.x) {
-		case 4:
-			switch(n.y) {
-				case 6:
-					return "Corpse #3.";
-					break;
-			}
-		case 6:
-			switch(n.y) {
-				case 2:
-					return "Knock knock!";
-					break;
-			}
 		case 10:
 			switch(n.y) {
-				case 2:
-					return "Fake Plastic Corpse.";
+				case 20:
+					return "Headless Guy.";
 					break;
 			}
-		case 14:
-			switch(n.y) {
-				case 2:
-					return "This one's just a neat rock.";
-					break;
-			}
-		case 16:
-			switch(n.y) {
-				case 2:
-					return "RIP 196X - 199X.";
-					break;
-			}
+			break;
 		case 12:
 			switch(n.y) {
-				case 92:
-					return "Knock knock!";
+				case 12:
+					return "Left Guy.";
 					break;
 			}
-		case 60:
+			break;
+		case 14:
 			switch(n.y) {
-				case 90:
-					return "Corpse #1.";
+				case 12:
+					return "Small Guy.";
+					break;
+				case 40:
+					return "<- Left Right ->.";
 					break;
 			}
-		case 62:
+			break;
+		case 16:
 			switch(n.y) {
-				case 86:
-					return "Corpse #2.";
+				case 12:
+					return "Right Guy.";
 					break;
 			}
-		case 66:
+			break;
+		case 24:
 			switch(n.y) {
-				case 84:
-					return "Help! I'm stuck!.";
+				case 22:
+					return "It's a chest!";
 					break;
 			}
+			break;
+		case 28:
+			switch(n.y) {
+				case 20:
+					return "This one has a tongue...";
+					break;
+			}
+			break;
+		case 30:
+			switch(n.y) {
+				case 20:
+					return "It's painted rock?";
+					break;
+			}
+			break;
+		case 34:
+			switch(n.y) {
+				case 30:
+					return "Post No Bills.";
+					break;
+			}
+			break;
+		case 133:
+			switch(n.y) {
+				case 9:
+					return "Left Chest.";
+					break;
+			}
+			break;
+		case 135:
+			switch(n.y) {
+				case 9:
+					return "Middle Chest.";
+					break;
+			}
+			break;
+		case 137:
+			switch(n.y) {
+				case 9:
+					return "Right Chest.";
+					break;
+			}
+			break;
+		case 138:
+			switch(n.y) {
+				case 41:
+					return "Left Chest.";
+					break;
+			}
+			break;
+		case 142:
+			switch(n.y) {
+				case 41:
+					return "Middle Chest.";
+					break;
+			}
+			break;
+		case 146:
+			switch(n.y) {
+				case 41:
+					return "Right Chest.";
+					break;
+			}
+			break;
 	}
 	return "There is no dialog for this coordinate.";
 }
@@ -438,6 +548,8 @@ std::string actionlookup(Point n) {
 void init() {
     set_screen_mode(ScreenMode::lores);
     screen.sprites = SpriteSheet::load(asset_route01);
+	
+	momentum = tilesize * 2;
 }
 
 
@@ -456,6 +568,8 @@ void render(uint32_t time) {
 	//Place playe
 	player.drawplayer();
 	
+	tilemap.drawmap4();
+	
 	if(state == DIALOG) {
 		screen.rectangle(Rect(8,16*4+8,scr_width*8-16,16*3-8));
 		screen.pen = Pen(0, 0, 0);
@@ -470,6 +584,7 @@ void render(uint32_t time) {
 		screen.text("Save", minimal_font, Point(16,16+8*2), true, center_left);
 	}
 	
+	if(platform == PICO){screen.rectangle(Rect(8*15,0,8*5,8*15));}
 }
 
 
@@ -491,8 +606,7 @@ void update(uint32_t time) {
 				camera_offset.y = 0;
 				tilemap.pos.y += player.dir.y * 2;
 			}
-			
-			//Collision triggers here doesn't do anything.
+		
 			if(buttons.state & DPAD_LEFT) {
 				player.facing = LEFT;
 				player.placeplayer();
@@ -510,11 +624,9 @@ void update(uint32_t time) {
 			if(buttons.state & DPAD_DOWN) {
 				player.facing = DOWN;
 				player.placeplayer();
-				if(tilemap.collide() == false) {momentum = tilesize * 2;}
-					else if(tilemap.collidetiles() >= 58 && tilemap.collidetiles() <= 60) {
-						momentum = tilesize * 4;
-						player.alternate = !player.alternate;
-					}
+				if(tilemap.collide() == false) {momentum = tilesize * 2;
+					player.alternate = !player.alternate;
+				}
 			} else
 			if(buttons.state & DPAD_UP) {
 				player.facing = UP;
@@ -541,24 +653,72 @@ void update(uint32_t time) {
 				state = XMENU;
 			}
 			if(buttons.pressed & Y) {
-				player.sprite = player.animation[0];
+				switch(camera) {
+					case FREE:
+						camera = FIXED;
+						break;
+					case FIXED:
+						camera = FREE;
+						break;
+				}
 			}
 			
 		}
 		
 		if(momentum > 0) {
-			camera_offset.x -= player.dir.x;
-			camera_offset.y -= player.dir.y;
-			momentum--;
-			animate();
-			player.placeplayer();
-			if(abs(camera_offset.x) == 16) {
-				camera_offset.x = 0;
-				tilemap.pos.x += player.dir.x * 2;
-			}
-			if(abs(camera_offset.y) == 16) {
-				camera_offset.y = 0;
-				tilemap.pos.y += player.dir.y * 2;
+			if (camera == FREE) {
+				player.pos = Point(6, 6);
+				camera_offset.x -= player.dir.x;
+				camera_offset.y -= player.dir.y;
+				momentum--;
+				player.placeplayer();
+				if(abs(camera_offset.x) == 16) {
+					camera_offset.x = 0;
+					tilemap.pos.x += player.dir.x * 2;
+				}
+				if(abs(camera_offset.y) == 16) {
+					camera_offset.y = 0;
+					tilemap.pos.y += player.dir.y * 2;
+				}
+			} else {
+				switch(platform) {
+					case BLIT:
+						player_offset.x += player.dir.x;
+						player_offset.y += player.dir.y;
+						momentum--;
+						player.placeplayer();
+						if(abs(player_offset.x) == 16) {
+							player_offset.x = 0;
+							player.pos.x += player.dir.x * 2;
+						}
+						if(abs(player_offset.y) == 16) {
+							player_offset.y = 0;
+							player.pos.y += player.dir.y * 2;
+						}
+						break;
+					case PICO:
+						if((player.pos.x <= 2 && player.facing == LEFT)|| (player.pos.x >= 12 && player.facing == RIGHT)) {
+							camera_offset.x -= player.dir.x;
+							} else {
+								player_offset.x += player.dir.x;}
+						player_offset.y += player.dir.y;
+						momentum--;
+						player.placeplayer();
+						if(abs(camera_offset.x) == 16) {
+							camera_offset.x = 0;
+							tilemap.pos.x += player.dir.x * 2;
+						}
+						if(abs(player_offset.x) == 16) {
+							player_offset.x = 0;
+							player.pos.x += player.dir.x * 2;
+						}
+						if(abs(player_offset.y) == 16) {
+							player_offset.y = 0;
+							player.pos.y += player.dir.y * 2;
+						}
+						break;
+				}
+				
 			}
 		}
 	} else if(state == DIALOG) {
