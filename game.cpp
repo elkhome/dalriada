@@ -1,3 +1,12 @@
+/*TODO
+	Screen tearing in PICO mode.
+	Simplify code.
+	Write comments.
+	Make game.
+	Add menu animation.
+	
+*/
+
 //#include <vector>
 //#include <string>
 #include <iostream>
@@ -9,15 +18,47 @@
 using namespace blit;
 const int tilesize = 8;
 
-const Rect player_front_stand = Rect(0,32,2,2);
-const Rect player_front_walk = Rect(2,32,2,2);
-const Rect player_side_stand = Rect(8,32,2,2);
-const Rect player_side_walk = Rect(10,32,2,2);
-const Rect player_back_stand = Rect(4,32,2,2);
-const Rect player_back_walk = Rect(6,32,2,2);
+#define NUM_PALETTES 5
 
-//#define M_WIDTH 80
-//#define M_HEIGHT 120
+Pen alternate_palettes[NUM_PALETTES][4] = {
+    { //Outside Ground
+        Pen(222, 222, 187),
+		Pen(213, 178, 113),
+        Pen(140, 98, 65),
+        Pen(29, 20, 14),
+    },
+    { //Plants
+        Pen(222, 222, 187),
+        Pen(136, 188, 91),
+        Pen(70, 142, 60),
+        Pen(11, 26, 11)
+    },
+    { //Transparent
+        Pen(222, 222, 187),
+		Pen(213, 178, 113),
+        Pen(140, 98, 65, 0),
+        Pen(29, 20, 14),
+    },
+    { //"Default Sprites"
+        Pen(248, 240, 224),
+        Pen(216, 128, 120),
+        Pen(176, 80, 16),
+        Pen(0, 0, 0)
+    },
+    { //"Default BG 6"
+        Pen(248, 240, 216),
+        Pen(152, 152, 208),
+        Pen(88, 88, 144),
+        Pen(0, 0, 0)
+    }
+};
+
+const Rect player_front_stand = Rect(0,34,2,2);
+const Rect player_front_walk = Rect(2,34,2,2);
+const Rect player_side_stand = Rect(8,34,2,2);
+const Rect player_side_walk = Rect(10,34,2,2);
+const Rect player_back_stand = Rect(4,34,2,2);
+const Rect player_back_walk = Rect(6,34,2,2);
 
 const int32_t map_width = M_WIDTH; //40;
 const int32_t map_height = M_HEIGHT; //84;
@@ -28,6 +69,9 @@ enum Platform {
 };
 
 Platform platform = BLIT;
+//Platform platform = PICO;
+
+int pico_offset = 0;	//The Picosystem has a less wide screen than the 32blit. Assigning a negative value to this variable shfits the screen left to fit the Picosystem.
 
 const int scr_width = 20; //20 for 32blit, 15 for picosystem
 const int scr_height = 15;
@@ -37,10 +81,6 @@ Point tile_offset(18, 0);
 Point camera_offset(0, 0);
 Point player_offset(0,0);
 
-int animationTimer = 0;
-int currentFrame = 0;
-int framecount = 1;
-
 int momentum = 0;
 
 enum Direction {
@@ -48,7 +88,6 @@ enum Direction {
 	RIGHT	= 0b0010,
 	DOWN	= 0b0100,
 	UP		= 0b1000,
-	
 };
 
 enum State {
@@ -60,24 +99,30 @@ enum State {
 State state = WALKING;
 
 enum Camera {
-	FREE,
-	FIXED,
+	FREE,	//Overworld camera. Player sprite is fixed, while the map moves around them.
+	FIXED,	//Indoors camera. Map is fixed while the player moves around it.
 };
 
 Camera camera = FREE;
 
+//Array the same size as the spritesheet, assigning collision values for each sprite.
 const uint8_t collidemap[1024] = {
 0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,0,0,0,0,0,0,15,15,0,0,0,0,15,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,15,15,15,15,0,0,0,0,0,0,15,15,0,0,0,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,0,0,0,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,0,0,0,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,0,0,0,0,15,15,15,15,15,15,15,15,15,15,15,15,0,0,0,0,15,15,15,15,15,15,15,15,15,15,15,15,0,0,0,0,0,0,15,15,15,15,15,15,15,15,15,15,0,0,0,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,0,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,16,16,0,0,0,0,15,15,15,15,15,15,15,15,15,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,16,16,0,0,0,0,0,0,15,15,15,15,15,15,15,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,16,16,16,16,0,0,0,0,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,16,16,16,16,0,0,0,0,15,15,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,0,0,0,15,15,0,0,0,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,0,0,0,15,15,0,0,0,0,0,0,0,15,15,0,0,0,0,0,0,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,15,15,0,0,0,0,0,0,0,15,15,0,0,0,0,0,0,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,15,15,0,0,0,0,0,15,15,15,15,0,0,0,0,0,0,15,15,15,15,15,15,15,15,0,0,0,0,0,0,0,15,15,0,0,0,0,0,15,15,15,15,0,0,0,0,0,0,15,15,15,15,15,15,15,15,0,0,0,0,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,15,15,15,15,15,15,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
 };
 
-int trans(int x) { return ( x ) * tilesize; }
-//int transy(int y) { return ( y ) * tilesize; }
+const uint8_t colormap[1024] = {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,0,0,0,0,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,1,1,1,1,1,1,1,1,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,
+};
 
-int slidex(int j) { return ( j - tile_offset.x ) * tilesize + camera_offset.x; }
-int slidey(int i) { return ( i - tile_offset.y ) * tilesize + camera_offset.y; }
+void swap_palettes(int i) {
+	screen.sprites->palette[0] = alternate_palettes[i][0];
+	screen.sprites->palette[1] = alternate_palettes[i][1];
+	screen.sprites->palette[2] = alternate_palettes[i][2];
+	screen.sprites->palette[3] = alternate_palettes[i][3];
+}
 
 struct Player {
 	Point dir;
+	Point pos_free;
 	Point pos;
 	Direction facing;
 	Direction last_facing;
@@ -91,7 +136,8 @@ struct Player {
 	
 	Player() {
 		dir = Point(0, 1);
-		pos = Point(6, 6);
+		pos_free = Point(8, 8);
+		pos = pos_free;
 		facing = DOWN;
 		
 		animation[0] = {player_front_stand};
@@ -112,8 +158,8 @@ struct Player {
 		
 		case LEFT:
 			dir = Point(-1,0);
+			flip = 1;
 			if(momentum > 0) {
-				flip = 1;
 				//sprite = player_side_walk;
 				sprite = (alternate) ? animation[5] : animation[4];
 				if (facing != last_facing) sprite = animation[4]; //Override if this is the first time turning in this direction.
@@ -128,8 +174,8 @@ struct Player {
 			break;
 		case RIGHT:
 			dir = Point(1,0);
-			if(momentum > 0) {	
-				flip = 0;
+			flip = 0;
+			if(momentum > 0) {
 				//sprite = player_side_walk;
 				sprite = (alternate) ? animation[5] : animation[4];
 				if (facing != last_facing) sprite = animation[4]; //Override if this is the first time turning in this direction.
@@ -183,12 +229,9 @@ struct Player {
 		}
 	}
 
-	void drawplayer() {
-		screen.sprite(sprite, Point(pos.x*8 + player_offset.x,pos.y*8 + player_offset.y), flip);
-	}
-	
-	void drawplayer_top() {
-		screen.sprite(sprite_top, Point(pos.x*8 + player_offset.x,pos.y*8 + player_offset.y), flip);
+	void drawplayer() {	//Draw Player sprite on 3rd player.
+		swap_palettes(4);
+		screen.sprite(sprite, Point(pos.x*8 + player_offset.x + pico_offset, pos.y*8 + player_offset.y), flip);
 	}
 
 } player;
@@ -198,7 +241,9 @@ struct Tilemap { //Class is a work in progress. Eventually, the map/collision/et
 	const int fringe = 2;
 	
 	Tilemap() {
-		pos = Point(20, 26);
+		//pos = Point(20, 26);
+		pos.x = 26 - player.pos_free.x;
+		pos.y = 32 - player.pos_free.y;
 	}
 
 	struct Tile {
@@ -207,37 +252,33 @@ struct Tilemap { //Class is a work in progress. Eventually, the map/collision/et
 		int layer;
 	};
 	
-	void drawmap2() {
+	void drawmap2() {	//Draw 2nd layer sprites.
 		for (int j = -1* fringe; j < scr_height + fringe; j++) {
 			for (int i = -1* fringe; i < scr_width + fringe; i++) {
 				//screen.sprite(loadedtiles2[j][i].sprite, Point(i*8+camera_offset.x, j*8+camera_offset.y));
-				screen.sprite(world_data3[std::min(map_height, std::max((int32_t)0, j+pos.y))][std::min(map_width, std::max((int32_t)0, i+pos.x))], Point(i*8+camera_offset.x, j*8+camera_offset.y));
-				//screen.sprite(world_data3[std::min((int32_t)M_HEIGHT, std::max((int32_t)0, j+pos.y))][std::min((int32_t)M_WIDTH, std::max((int32_t)0, i+pos.x))], Point(i*8+camera_offset.x, j*8+camera_offset.y));
-			//	screen.sprite(world_data3[std::min((int32_t)M_HEIGHT, std::max((int32_t)0, j+pos.y))][std::min((int32_t)M_WIDTH, std::max((int32_t)0, i+pos.x))], Point(i*8+camera_offset.x, j*8+camera_offset.y));
+				int k = world_data3[std::min(map_height, std::max((int32_t)0, j+pos.y))][std::min(map_width, std::max((int32_t)0, i+pos.x))];
+				int l = colormap[k];
+				swap_palettes(l);
 				
+				screen.sprite(k, Point(i*8+camera_offset.x + pico_offset, j*8+camera_offset.y));
 			}
 		}
 	}
 	
 	void drawmap4() {
-		int s = 0;
-		for (int j = -1* fringe; j < scr_height + fringe; j++) {
-			for (int i = -1* fringe; i < scr_width + fringe; i++) {
-				s = world_data3[std::min(map_height, std::max((int32_t)0, j+pos.y))][std::min(map_width, std::max((int32_t)0, i+pos.x))];
-				//screen.sprite(loadedtiles2[j][i].sprite, Point(i*8+camera_offset.x, j*8+camera_offset.y));
-				if (s == 640)
-					{screen.sprite(1036, Point(i*8+camera_offset.x, j*8+camera_offset.y));}
-				if (s == 641)
-					{screen.sprite(1037, Point(i*8+camera_offset.x, j*8+camera_offset.y));}
-				if (s == 642)
-					{screen.sprite(1038, Point(i*8+camera_offset.x, j*8+camera_offset.y));}
-				if (s == 643)
-					{screen.sprite(1039, Point(i*8+camera_offset.x, j*8+camera_offset.y));}
-			//	screen.sprite(world_data3[std::min((int32_t)M_HEIGHT, std::max((int32_t)0, j+pos.y))][std::min((int32_t)M_WIDTH, std::max((int32_t)0, i+pos.x))], Point(i*8+camera_offset.x, j*8+camera_offset.y));
-				
+		int i = -2;
+		while(i <= 3) {
+			int j = world_data3[player.pos.y+pos.y+1][player.pos.x+pos.x+i];
+			int k = colormap[j];
+			swap_palettes(k);
+			screen.sprites->palette[2] = Pen(0, 0, 0, 0);
+			if ((j >= 546 && j <= 549) || (j >= 640 && j<= 643)) {
+				screen.sprite(j, Point((player.pos.x+i)*8+camera_offset.x + pico_offset,(player.pos.y+1)*8+camera_offset.y));
 			}
+			i++;
 		}
 	}
+
 	
 	int collidetiles(int n = 0) {
 		
@@ -356,22 +397,23 @@ struct Tilemap { //Class is a work in progress. Eventually, the map/collision/et
 			player.facing = UP;
 		} else if (loc_x == 26 && loc_y == 32) {	//to rail room
 			camera = FIXED;
-			pos.x = 140 - player.pos.x;
+			pos.x = 142 - player.pos.x;
 			pos.y = 47 - 13;
+			player.pos.x = 7;
 			player.pos.y = 13;
 			player.facing = UP;
 		} else if (loc_x == 141 && loc_y == 19) {	//from crate room
 			camera = FREE;
-			pos.x = 16 - 6;
-			pos.y = 28 - 6;
+			pos.x = 16 - player.pos_free.x;
+			pos.y = 28 - player.pos_free.y;
 			player.facing = DOWN;
-		} else if (loc_x == 140 && loc_y == 47) {	//from rail room
+		} else if (loc_x == 141 && loc_y == 47) {	//from rail room
 			camera = FREE;
-			pos.x = 26 - 6;
-			pos.y = 32 - 6;
+			pos.x = 26 - player.pos_free.x;
+			pos.y = 32 - player.pos_free.y;
 			player.facing = DOWN;
 		} else {
-			
+			camera = FREE;
 			pos.x = 14;
 			pos.y = 18;
 			player.facing = DOWN;
@@ -495,17 +537,10 @@ std::string actionlookup(Point n) {
 					break;
 			}
 			break;
-		case 133:
-			switch(n.y) {
-				case 9:
-					return "Left Chest.";
-					break;
-			}
-			break;
 		case 135:
 			switch(n.y) {
 				case 9:
-					return "Middle Chest.";
+					return "Left Chest.";
 					break;
 			}
 			break;
@@ -516,21 +551,14 @@ std::string actionlookup(Point n) {
 					break;
 			}
 			break;
-		case 138:
+		case 139:
 			switch(n.y) {
 				case 41:
 					return "Left Chest.";
 					break;
 			}
 			break;
-		case 142:
-			switch(n.y) {
-				case 41:
-					return "Middle Chest.";
-					break;
-			}
-			break;
-		case 146:
+		case 143:
 			switch(n.y) {
 				case 41:
 					return "Right Chest.";
@@ -548,7 +576,9 @@ std::string actionlookup(Point n) {
 void init() {
     set_screen_mode(ScreenMode::lores);
     screen.sprites = SpriteSheet::load(asset_route01);
-	
+	if (scr_width < 20) {platform = PICO;}
+	if (platform == PICO) {pico_offset = -20;}
+
 	momentum = tilesize * 2;
 }
 
@@ -561,6 +591,8 @@ void render(uint32_t time) {
     //Set screen to default color.
 	screen.pen = Pen(248, 248, 248);
     screen.clear();
+	
+	swap_palettes(0);
 
 	//Draw layer one of the map.
 	tilemap.drawmap2();
@@ -584,7 +616,10 @@ void render(uint32_t time) {
 		screen.text("Save", minimal_font, Point(16,16+8*2), true, center_left);
 	}
 	
-	if(platform == PICO){screen.rectangle(Rect(8*15,0,8*5,8*15));}
+	if(platform == PICO) {
+		screen.pen = Pen(0, 0, 0);
+		screen.rectangle(Rect(8*15,0,8*5,8*15));
+	}
 }
 
 
@@ -645,8 +680,6 @@ void update(uint32_t time) {
 				actions(tilemap.collidetiles());
 			}
 			if(buttons.pressed & B) {
-				currentFrame++;
-				currentFrame %= framecount;
 				player.placeplayer();
 			}
 			if(buttons.pressed & X) {
@@ -667,7 +700,7 @@ void update(uint32_t time) {
 		
 		if(momentum > 0) {
 			if (camera == FREE) {
-				player.pos = Point(6, 6);
+				player.pos = player.pos_free; //Point(6, 6);
 				camera_offset.x -= player.dir.x;
 				camera_offset.y -= player.dir.y;
 				momentum--;
@@ -681,8 +714,8 @@ void update(uint32_t time) {
 					tilemap.pos.y += player.dir.y * 2;
 				}
 			} else {
-				switch(platform) {
-					case BLIT:
+//				switch(platform) {
+//					case BLIT:
 						player_offset.x += player.dir.x;
 						player_offset.y += player.dir.y;
 						momentum--;
@@ -695,9 +728,9 @@ void update(uint32_t time) {
 							player_offset.y = 0;
 							player.pos.y += player.dir.y * 2;
 						}
-						break;
+/*						break;
 					case PICO:
-						if((player.pos.x <= 2 && player.facing == LEFT)|| (player.pos.x >= 12 && player.facing == RIGHT)) {
+						if((player.pos.x <= 2 && player.facing == LEFT)|| (player.pos.x >= 10 && player.facing == RIGHT)) {
 							camera_offset.x -= player.dir.x;
 							} else {
 								player_offset.x += player.dir.x;}
@@ -717,7 +750,7 @@ void update(uint32_t time) {
 							player.pos.y += player.dir.y * 2;
 						}
 						break;
-				}
+				} */
 				
 			}
 		}

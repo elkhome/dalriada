@@ -4,5 +4,6 @@
 
 assets.cpp:
   assets/oracle1.png:
+    palette: assets/oracle1_palette.png
     name: asset_route01
     transparent: 255,0,255
